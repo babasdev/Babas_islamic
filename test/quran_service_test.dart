@@ -54,6 +54,19 @@ void main() {
     expect(firstPage, 1);
   });
 
+  test('Quran service maps mushaf pages from the page start dataset', () async {
+    final service = QuranService();
+
+    final firstPage = await service.fetchPage(1);
+    expect(firstPage.ayahs.isNotEmpty, isTrue);
+    expect(firstPage.ayahs.first.surahNumber, 1);
+    expect(firstPage.ayahs.first.numberInSurah, 1);
+
+    final secondPage = await service.fetchPage(2);
+    expect(secondPage.ayahs.isNotEmpty, isTrue);
+    expect(secondPage.ayahs.first.surahNumber, 2);
+  });
+
   test('Quran audio service resolves a public verse audio URL for a valid qari', () async {
     final service = QuranAudioService();
 

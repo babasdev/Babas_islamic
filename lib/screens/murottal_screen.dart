@@ -15,16 +15,23 @@ class _MurottalScreenState extends State<MurottalScreen> {
   final QuranService _service = QuranService();
   final AppSettingsService _settingsService = AppSettingsService.instance;
   final QuranAudioService _audioService = QuranAudioService();
-  late final Future<List<dynamic>> _surahsFuture;
+  late Future<List<dynamic>> _surahsFuture;
   String _selectedQariCode = 'abdullah_basfar';
   String _selectedQariName = 'Abdullah Basfar';
 
   @override
   void initState() {
     super.initState();
-    _surahsFuture = _service.fetchSurahs();
+    _surahsFuture = Future.value(const <dynamic>[]);
     _settingsService.addListener(_refreshSettings);
     _loadSettings();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _surahsFuture = _service.fetchSurahs();
+        });
+      }
+    });
   }
 
   @override

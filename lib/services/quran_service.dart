@@ -19,31 +19,38 @@ class QuranService {
   static const String _khatamStartedAtKey = 'khatam_started_at';
   static const String _khatamReadAyahsKey = 'khatam_read_ayahs';
   static const int _quranTotalAyahs = 6236;
+  List<QuranPageStart>? _pageStartsCache;
+  List<Map<String, dynamic>>? _catalogCache;
 
-  Future<List<QuranSurahSummary>> fetchSurahs() async {
+  Future<List<Map<String, dynamic>>> _loadCatalogData() async {
+    if (_catalogCache != null) {
+      return _catalogCache!;
+    }
+
     try {
       final raw = await rootBundle.loadString('assets/data/quran_complete.json');
       final decoded = jsonDecode(raw);
       final data = decoded is Map<String, dynamic> ? decoded['data'] : null;
       if (data is List) {
-        return data
-            .whereType<Map<String, dynamic>>()
-            .map(QuranSurahSummary.fromJson)
-            .toList();
+        _catalogCache = data.whereType<Map<String, dynamic>>().toList();
+        return _catalogCache!;
       }
     } catch (_) {}
 
-    return <QuranSurahSummary>[];
+    _catalogCache = const <Map<String, dynamic>>[];
+    return _catalogCache!;
+  }
+
+  Future<List<QuranSurahSummary>> fetchSurahs() async {
+    final data = await _loadCatalogData();
+    return data.map(QuranSurahSummary.fromJson).toList();
   }
 
   Future<List<QuranJuz>> fetchJuzs() async {
-    try {
-      final raw = await rootBundle.loadString('assets/data/quran_complete.json');
-      final decoded = jsonDecode(raw);
-      final data = decoded is Map<String, dynamic> ? decoded['data'] : null;
-      if (data is List) {
-        final surahs = data.whereType<Map<String, dynamic>>().toList();
-        final ayahEntries = <QuranJuzAyah>[];
+    final data = await _loadCatalogData();
+    if (data.isNotEmpty) {
+      final surahs = data.whereType<Map<String, dynamic>>().toList();
+      final ayahEntries = <QuranJuzAyah>[];
         for (final surah in surahs) {
           final surahNumber = _parseInt(surah['number']);
           final surahName = surah['englishName']?.toString() ?? 'Surah $surahNumber';
@@ -105,16 +112,13 @@ class QuranService {
     );
 
     try {
-      final raw = await rootBundle.loadString('assets/data/quran_complete.json');
-      final decoded = jsonDecode(raw);
-      final data = decoded is Map<String, dynamic> ? decoded['data'] : null;
-      if (data is List) {
-        final surahJson = data.whereType<Map<String, dynamic>>().firstWhere(
-          (entry) => _parseInt(entry['number']) == number,
-          orElse: () => <String, dynamic>{},
-        );
+      final data = await _loadCatalogData();
+      final surahJson = data.whereType<Map<String, dynamic>>().firstWhere(
+        (entry) => _parseInt(entry['number']) == number,
+        orElse: () => <String, dynamic>{},
+      );
 
-        if (surahJson.isNotEmpty) {
+      if (surahJson.isNotEmpty) {
           final ayahs = surahJson['ayahs'] is List ? surahJson['ayahs'] as List : <dynamic>[];
           final arabic = ayahs
               .whereType<Map<String, dynamic>>()
@@ -122,6 +126,7 @@ class QuranService {
                 (entry) {
                   final numberInSurah = _parseInt(entry['numberInSurah']);
                   return QuranAyah(
+                    surahNumber: number,
                     number: _parseInt(entry['number']),
                     numberInSurah: numberInSurah > 0 ? numberInSurah : _parseInt(entry['number']),
                     juz: _parseInt(entry['juz']),
@@ -137,6 +142,7 @@ class QuranService {
                 (entry) {
                   final numberInSurah = _parseInt(entry['numberInSurah']);
                   return QuranAyah(
+                    surahNumber: number,
                     number: _parseInt(entry['number']),
                     numberInSurah: numberInSurah > 0 ? numberInSurah : _parseInt(entry['number']),
                     juz: _parseInt(entry['juz']),
@@ -152,6 +158,7 @@ class QuranService {
                 (entry) {
                   final numberInSurah = _parseInt(entry['numberInSurah']);
                   return QuranAyah(
+                    surahNumber: number,
                     number: _parseInt(entry['number']),
                     numberInSurah: numberInSurah > 0 ? numberInSurah : _parseInt(entry['number']),
                     juz: _parseInt(entry['juz']),
@@ -366,31 +373,79 @@ class QuranService {
     return <int>[1];
   }
 
-  Future<QuranPage> fetchPage(int pageNumber) async {
+  Future<List<QuranPageStart>> _fetchPageStarts() async {
+    if (_pageStartsCache != null) {
+      return _pageStartsCache!;
+    }
     try {
-      final response = await http.get(Uri.parse('https://api.alquran.cloud/v1/page/$pageNumber/quran-uthmani'));
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map<String, dynamic>) {
-          final data = decoded['data'];
-          if (data is Map<String, dynamic>) {
-            final ayahs = data['ayahs'];
-            if (ayahs is List) {
-              final mappedAyahs = ayahs.whereType<Map<String, dynamic>>().map((entry) {
-                return QuranAyah(
+      final raw = await rootBundle.loadString('assets/data/quran_page_starts.json');
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        _pageStartsCache = decoded
+            .whereType<Map<String, dynamic>>()
+            .map(QuranPageStart.fromJson)
+            .toList();
+        return _pageStartsCache!;
+      }
+    } catch (_) {}
+    _pageStartsCache = const <QuranPageStart>[];
+    return _pageStartsCache!;
+  }
+
+  Future<QuranPage> fetchPage(int pageNumber) async {
+    final pageStarts = await _fetchPageStarts();
+    if (pageNumber < 1 || pageNumber > 604) {
+      return QuranPage(number: pageNumber, juzNumber: 0, ayahs: const <QuranAyah>[]);
+    }
+
+    try {
+      final data = await _loadCatalogData();
+      if (data.isNotEmpty) {
+        final pageStart = pageStarts.firstWhere((item) => item.page == pageNumber, orElse: () => QuranPageStart(page: pageNumber, surah: 1, ayah: 1, juz: 0));
+        final pageIndex = data.whereType<Map<String, dynamic>>().toList().indexWhere((entry) => _parseInt(entry['number']) == pageStart.surah);
+        if (pageIndex >= 0) {
+          final surahJson = data.whereType<Map<String, dynamic>>().elementAt(pageIndex);
+          final ayahs = surahJson['ayahs'] is List ? surahJson['ayahs'] as List : <dynamic>[];
+          final currentSurahNumber = _parseInt(surahJson['number']);
+
+          // Build page ayahs across surah boundaries until next page starts or end of surah.
+          final nextPageStart = pageStarts.firstWhere(
+            (item) => item.page == pageNumber + 1,
+            orElse: () => QuranPageStart(page: pageNumber + 1, surah: currentSurahNumber, ayah: ayahs.length + 1, juz: pageStart.juz),
+          );
+
+          final collectedAyahs = <QuranAyah>[];
+
+          for (var currentIndex = pageIndex; currentIndex < data.length; currentIndex++) {
+            final currentSurahJson = data.whereType<Map<String, dynamic>>().elementAt(currentIndex);
+            final currentSurahNumber = _parseInt(currentSurahJson['number']);
+            final currentAyahs = currentSurahJson['ayahs'] is List ? currentSurahJson['ayahs'] as List : <dynamic>[];
+            final startAyah = currentSurahNumber == pageStart.surah ? pageStart.ayah : 1;
+            final endAyah = currentSurahNumber == nextPageStart.surah ? nextPageStart.ayah - 1 : 9999;
+
+            for (final entry in currentAyahs.whereType<Map<String, dynamic>>()) {
+              final numberInSurah = _parseInt(entry['numberInSurah']);
+              if (numberInSurah >= startAyah && numberInSurah <= endAyah) {
+                collectedAyahs.add(QuranAyah(
+                  surahNumber: currentSurahNumber,
                   number: _parseInt(entry['number']),
-                  numberInSurah: _parseInt(entry['numberInSurah']),
+                  numberInSurah: numberInSurah,
                   juz: _parseInt(entry['juz']),
-                  text: entry['text']?.toString() ?? '',
-                );
-              }).toList();
-              return QuranPage(
-                number: pageNumber,
-                juzNumber: mappedAyahs.isNotEmpty ? mappedAyahs.first.juz : 0,
-                ayahs: mappedAyahs,
-              );
+                  text: entry['arab']?.toString() ?? '',
+                ));
+              }
+            }
+
+            if (currentSurahNumber == nextPageStart.surah) {
+              break;
             }
           }
+
+          return QuranPage(
+            number: pageNumber,
+            juzNumber: pageStart.juz,
+            ayahs: collectedAyahs,
+          );
         }
       }
     } catch (_) {}
@@ -399,22 +454,14 @@ class QuranService {
   }
 
   Future<int> resolvePageForAyah(int surahNumber, int ayahNumber) async {
-    try {
-      final response = await http.get(Uri.parse('https://api.quran.com/api/v4/verses/by_key/$surahNumber:$ayahNumber'));
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map<String, dynamic>) {
-          final verse = decoded['verse'];
-          if (verse is Map<String, dynamic>) {
-            final pageNumber = _parseInt(verse['page_number']);
-            if (pageNumber > 0) {
-              return pageNumber;
-            }
-          }
-        }
+    final pageStarts = await _fetchPageStarts();
+    final sorted = pageStarts.toList()..sort((a, b) => a.page.compareTo(b.page));
+    for (var i = sorted.length - 1; i >= 0; i--) {
+      final page = sorted[i];
+      if (surahNumber > page.surah || (surahNumber == page.surah && ayahNumber >= page.ayah)) {
+        return page.page;
       }
-    } catch (_) {}
-
+    }
     return 1;
   }
 

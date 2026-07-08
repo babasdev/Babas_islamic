@@ -34,20 +34,23 @@ class QuranSurahSummary {
 }
 
 class QuranAyah {
+  final int surahNumber;
   final int number;
   final int numberInSurah;
   final int juz;
   final String text;
 
   QuranAyah({
+    required this.surahNumber,
     required this.number,
     required this.numberInSurah,
     required this.juz,
     required this.text,
   });
 
-  factory QuranAyah.fromJson(Map<String, dynamic> json) {
+  factory QuranAyah.fromJson(Map<String, dynamic> json, {int surahNumber = 0}) {
     return QuranAyah(
+      surahNumber: surahNumber,
       number: json['number'] is int ? json['number'] as int : int.tryParse('${json['number']}') ?? 0,
       numberInSurah: json['numberInSurah'] is int
           ? json['numberInSurah'] as int
@@ -92,6 +95,35 @@ class QuranJuz {
     required this.endSurahNumber,
     required this.endAyahNumber,
   });
+}
+
+class QuranPageStart {
+  final int page;
+  final int surah;
+  final int ayah;
+  final int juz;
+
+  QuranPageStart({
+    required this.page,
+    required this.surah,
+    required this.ayah,
+    required this.juz,
+  });
+
+  factory QuranPageStart.fromJson(Map<String, dynamic> json) {
+    int parse(dynamic value) {
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
+
+    return QuranPageStart(
+      page: parse(json['page']),
+      surah: parse(json['surah']),
+      ayah: parse(json['ayah']),
+      juz: parse(json['juz']),
+    );
+  }
 }
 
 class QuranPage {

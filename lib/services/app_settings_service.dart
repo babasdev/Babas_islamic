@@ -7,8 +7,8 @@ class AppSettings {
     this.fontSizeArabic = 24,
     this.fontSizeLatin = 15,
     this.fontSizeTranslation = 14,
-    this.arabicFontFamily = 'Amiri',
-    this.appFontFamily = 'Roboto',
+    this.arabicFontFamily = 'Noto Naskh Arabic',
+    this.appFontFamily = 'Noto Sans',
     this.qariCode = 'abdullah_basfar',
     this.qariName = 'Abdullah Basfar',
     this.playbackSpeed = 1.0,
@@ -62,8 +62,8 @@ class AppSettingsService extends ChangeNotifier {
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     final themeModeValue = prefs.getString('theme_mode');
-    final arabicFont = prefs.getString('arabic_font') ?? 'Amiri';
-    final appFont = prefs.getString('app_font') ?? 'Roboto';
+    final arabicFont = prefs.getString('arabic_font') ?? 'Noto Naskh Arabic';
+    final appFont = prefs.getString('app_font') ?? 'Noto Sans';
     final qariCode = prefs.getString('qari_code') ?? 'abdullah_basfar';
     final qariName = prefs.getString('qari_name') ?? 'Abdullah Basfar';
 

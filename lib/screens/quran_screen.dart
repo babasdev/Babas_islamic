@@ -13,8 +13,9 @@ class QuranScreen extends StatefulWidget {
 
 class _QuranScreenState extends State<QuranScreen> with SingleTickerProviderStateMixin {
   final QuranService _service = QuranService();
-  late final Future<List<QuranSurahSummary>> _surahsFuture;
-  late final Future<List<QuranJuz>> _juzsFuture;
+  late Future<List<QuranSurahSummary>> _surahsFuture;
+  late Future<List<QuranJuz>> _juzsFuture;
+  bool _juzsLoaded = false;
   final TextEditingController _customTargetController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   late final TabController _tabController;
@@ -31,19 +32,14 @@ class _QuranScreenState extends State<QuranScreen> with SingleTickerProviderStat
     'remainingAyahs': 6236,
   };
   int _selectedTargetDays = 30;
-  int _selectedTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) {
-        setState(() => _selectedTabIndex = _tabController.index);
-      }
-    });
     _surahsFuture = _service.fetchSurahs();
-    _juzsFuture = _service.fetchJuzs();
+    _juzsFuture = Future.value(const <QuranJuz>[]);
+    _tabController.addListener(_handleTabChanged);
     _refreshPersistedState();
   }
 
@@ -52,8 +48,25 @@ class _QuranScreenState extends State<QuranScreen> with SingleTickerProviderStat
     _service.dispose();
     _customTargetController.dispose();
     _searchController.dispose();
+    _tabController.removeListener(_handleTabChanged);
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _handleTabChanged() {
+    if (_tabController.index == 1 && !_juzsLoaded) {
+      _loadJuzs();
+    }
+  }
+
+  Future<void> _loadJuzs() async {
+    if (_juzsLoaded) {
+      return;
+    }
+    setState(() {
+      _juzsLoaded = true;
+      _juzsFuture = _service.fetchJuzs();
+    });
   }
 
   Future<void> _refreshPersistedState() async {
@@ -112,7 +125,9 @@ class _QuranScreenState extends State<QuranScreen> with SingleTickerProviderStat
     if (surahNumber == null) {
       return;
     }
-    await _openSurahDetail(surahNumber, initialAyahNumber: _lastRead?['ayahNumber'] as int? ?? 1);
+    final ayahNumber = _lastRead?['ayahNumber'] as int? ?? 1;
+    final pageNumber = _lastRead?['pageNumber'] as int? ?? await _service.resolvePageForAyah(surahNumber, ayahNumber);
+    await _openSurahDetail(surahNumber, initialAyahNumber: ayahNumber, initialPageNumber: pageNumber);
   }
 
   Widget _buildSurahTab(List<QuranSurahSummary> surahs) {
@@ -322,6 +337,20 @@ class _QuranScreenState extends State<QuranScreen> with SingleTickerProviderStat
                   ],
                 ),
               ),
+              if (_lastRead != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Card(
+                    margin: EdgeInsets.zero,
+                    child: ListTile(
+                      leading: const Icon(Icons.play_circle_fill_rounded, color: Colors.green),
+                      title: Text('Lanjutkan Membaca ${_lastRead!['surahName']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                      subtitle: Text('Ayat ${_lastRead!['ayahNumber']} • Halaman ${_lastRead!['pageNumber'] ?? 1}'),
+                      trailing: FilledButton.tonal(onPressed: _openLastRead, child: const Text('Buka')),
+                      onTap: _openLastRead,
+                    ),
+                  ),
+                ),
               TabBar(
                 controller: _tabController,
                 labelColor: Theme.of(context).colorScheme.primary,
