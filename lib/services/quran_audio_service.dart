@@ -189,6 +189,13 @@ class QuranAudioService {
     required int ayahNumber,
     required int totalAyahs,
   }) async {
+    if (_currentSurahNumber == surahNumber &&
+        _currentAyahNumber == ayahNumber &&
+        (_isPlaying || _isLoading)) {
+      _emitActiveAyah();
+      return;
+    }
+
     _activeTotalAyahs = totalAyahs;
     _currentSurahNumber = surahNumber;
     _currentAyahNumber = ayahNumber;
@@ -314,7 +321,7 @@ class QuranAudioService {
       return;
     }
     try {
-      final response = await http.get(Uri.parse(remoteUrl));
+      final response = await http.get(Uri.parse(remoteUrl)).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         await writeFile(localPath, response.bodyBytes);
       }
@@ -375,7 +382,7 @@ class QuranAudioService {
             'https://api.alquran.cloud/v1/ayah/$surahNumber:$ayahNumber/$edition';
         final response = await http
             .get(Uri.parse(url), headers: {'Accept': 'application/json'})
-            .timeout(const Duration(seconds: 8));
+            .timeout(const Duration(seconds: 10));
         if (response.statusCode == 200) {
           final decoded = jsonDecode(response.body);
           if (decoded is Map<String, dynamic>) {
@@ -420,34 +427,37 @@ class QuranAudioService {
     required int surahNumber,
     required int ayahNumber,
   }) async {
-    final raw = await rootBundle.loadString('assets/data/quran_complete.json');
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map<String, dynamic>) {
-      return 0;
-    }
+    try {
+      final raw = await rootBundle.loadString('assets/data/quran_complete.json');
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return 0;
+      }
 
-    final data = decoded['data'];
-    if (data is! List) {
-      return 0;
-    }
+      final data = decoded['data'];
+      if (data is! List) {
+        return 0;
+      }
 
-    for (final entry in data.whereType<Map<String, dynamic>>()) {
-      final number = int.tryParse(entry['number']?.toString() ?? '') ?? 0;
-      if (number == surahNumber) {
-        final ayahs = entry['ayahs'];
-        if (ayahs is List) {
-          for (final ayah in ayahs.whereType<Map<String, dynamic>>()) {
-            final currentAyahNumber =
-                int.tryParse(ayah['numberInSurah']?.toString() ?? '') ?? 0;
-            if (currentAyahNumber == ayahNumber) {
-              return int.tryParse(ayah['number']?.toString() ?? '') ?? 0;
+      for (final entry in data.whereType<Map<String, dynamic>>()) {
+        final number = int.tryParse(entry['number']?.toString() ?? '') ?? 0;
+        if (number == surahNumber) {
+          final ayahs = entry['ayahs'];
+          if (ayahs is List) {
+            for (final ayah in ayahs.whereType<Map<String, dynamic>>()) {
+              final currentAyahNumber =
+                  int.tryParse(ayah['numberInSurah']?.toString() ?? '') ?? 0;
+              if (currentAyahNumber == ayahNumber) {
+                return int.tryParse(ayah['number']?.toString() ?? '') ?? 0;
+              }
             }
           }
+          break;
         }
-        break;
       }
+    } catch (_) {
+      return 0;
     }
-
     return 0;
   }
 

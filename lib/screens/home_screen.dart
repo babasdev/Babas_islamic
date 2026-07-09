@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use, unnecessary_brace_in_string_interps
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';

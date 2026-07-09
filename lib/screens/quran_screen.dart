@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously, unnecessary_null_comparison, deprecated_member_use, unnecessary_brace_in_string_interps
+
 import 'package:flutter/material.dart';
 
 import '../models/quran_model.dart';
@@ -103,15 +105,52 @@ class _QuranScreenState extends State<QuranScreen> with SingleTickerProviderStat
   }
 
   Future<void> _openSurahDetail(int surahNumber, {int? initialAyahNumber, int? initialPageNumber}) async {
-    final detail = await _service.fetchSurahDetail(surahNumber);
-    if (!mounted) {
+    // Show loading dialog while fetching detail
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    SurahDetail? detail;
+    try {
+      detail = await _service.fetchSurahDetail(surahNumber).timeout(const Duration(seconds: 10));
+    } catch (error) {
+      // Dismiss loading
+      if (mounted) Navigator.pop(context);
+      // Show retry dialog
+      final retry = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Gagal memuat'),
+            content: const Text('Tidak dapat memuat detail surah. Periksa koneksi atau coba lagi.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Coba Lagi')),
+            ],
+          );
+        },
+      );
+
+      if (retry == true) {
+        return _openSurahDetail(surahNumber, initialAyahNumber: initialAyahNumber, initialPageNumber: initialPageNumber);
+      }
       return;
     }
+
+    // Dismiss loading
+    if (mounted) Navigator.pop(context);
+
+    if (!mounted || detail == null) {
+      return;
+    }
+
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => SurahDetailScreen(
-          detail: detail,
+          detail: detail!,
           initialAyahNumber: initialAyahNumber,
           initialPageNumber: initialPageNumber,
         ),

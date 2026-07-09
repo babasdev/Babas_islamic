@@ -20,4 +20,15 @@ void main() {
     await service.updateFontSizeArabic(28);
     expect(service.currentSettings.fontSizeArabic, 28);
   });
+
+  test('unsupported font selections are normalized to supported values', () async {
+    final service = AppSettingsService();
+    await service.load();
+
+    await service.updateArabicFont('Unknown Font');
+    expect(service.currentSettings.arabicFontFamily, 'Amiri');
+
+    await service.updateAppFont('Unknown App Font');
+    expect(service.currentSettings.appFontFamily, 'Roboto');
+  });
 }

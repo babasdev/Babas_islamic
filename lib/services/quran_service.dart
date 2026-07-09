@@ -348,11 +348,13 @@ class QuranService {
     } catch (_) {}
 
     try {
-      final response = await http.get(
+      final response = await http
+          .get(
         Uri.parse(
           'https://api.quran.com/api/v4/tafsirs/169/by_ayah/$surahNumber:$ayahNumber',
         ),
-      );
+      )
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) {
@@ -368,16 +370,18 @@ class QuranService {
       }
     } catch (_) {}
 
-    return null;
+    return 'Belum ada keterangan Asbabun Nuzul untuk ayat ini. Data lokal belum tersedia.';
   }
 
   Future<List<int>> fetchSurahPageRange(int surahNumber) async {
     try {
-      final response = await http.get(
+      final response = await http
+          .get(
         Uri.parse(
           'https://api.quran.com/api/v4/chapters/$surahNumber?language=id',
         ),
-      );
+      )
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) {

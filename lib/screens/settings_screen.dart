@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import '../services/app_settings_service.dart';
 
@@ -101,6 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       DropdownMenuItem(value: 'Amiri', child: Text('Amiri')),
                       DropdownMenuItem(value: 'Scheherazade New', child: Text('Scheherazade New')),
                       DropdownMenuItem(value: 'Noto Naskh Arabic', child: Text('Noto Naskh Arabic')),
+                      DropdownMenuItem(value: 'Noto Sans Arabic', child: Text('Noto Sans Arabic')),
                     ],
                     onChanged: (value) async {
                       if (value != null) {
@@ -127,6 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       DropdownMenuItem(value: 'Roboto', child: Text('Roboto')),
                       DropdownMenuItem(value: 'Nunito', child: Text('Nunito')),
                       DropdownMenuItem(value: 'Poppins', child: Text('Poppins')),
+                      DropdownMenuItem(value: 'Noto Sans', child: Text('Noto Sans')),
                     ],
                     onChanged: (value) async {
                       if (value != null) {

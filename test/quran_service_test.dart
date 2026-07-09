@@ -67,6 +67,16 @@ void main() {
     expect(secondPage.ayahs.first.surahNumber, 2);
   });
 
+  test('Quran service exposes the full mushaf page range and terminal page', () async {
+    final service = QuranService();
+
+    final page604 = await service.fetchPage(604);
+    expect(page604.ayahs.isNotEmpty, isTrue);
+
+    final pageRange = await service.resolvePageForAyah(114, 6);
+    expect(pageRange, greaterThan(0));
+  });
+
   test('Quran audio service resolves a public verse audio URL for a valid qari', () async {
     final service = QuranAudioService();
 

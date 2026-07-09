@@ -55,15 +55,41 @@ class AppSettingsService extends ChangeNotifier {
   factory AppSettingsService() => instance;
 
   static final AppSettingsService instance = AppSettingsService._();
+  static const List<String> supportedArabicFonts = <String>[
+    'Amiri',
+    'Scheherazade New',
+    'Noto Naskh Arabic',
+    'Noto Sans Arabic',
+  ];
+  static const List<String> supportedAppFonts = <String>[
+    'Roboto',
+    'Nunito',
+    'Poppins',
+    'Noto Sans',
+  ];
 
   AppSettings _settings = const AppSettings();
   AppSettings get currentSettings => _settings;
 
+  String normalizeFontFamily(String? fontFamily, {required List<String> allowedFonts}) {
+    final trimmed = fontFamily?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return allowedFonts.first;
+    }
+    return allowedFonts.contains(trimmed) ? trimmed : allowedFonts.first;
+  }
+
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     final themeModeValue = prefs.getString('theme_mode');
-    final arabicFont = prefs.getString('arabic_font') ?? 'Noto Naskh Arabic';
-    final appFont = prefs.getString('app_font') ?? 'Noto Sans';
+    final arabicFont = normalizeFontFamily(
+      prefs.getString('arabic_font'),
+      allowedFonts: supportedArabicFonts,
+    );
+    final appFont = normalizeFontFamily(
+      prefs.getString('app_font'),
+      allowedFonts: supportedAppFonts,
+    );
     final qariCode = prefs.getString('qari_code') ?? 'abdullah_basfar';
     final qariName = prefs.getString('qari_name') ?? 'Abdullah Basfar';
 
@@ -114,16 +140,24 @@ class AppSettingsService extends ChangeNotifier {
   }
 
   Future<void> updateArabicFont(String fontFamily) async {
-    _settings = _settings.copyWith(arabicFontFamily: fontFamily);
+    final normalized = normalizeFontFamily(
+      fontFamily,
+      allowedFonts: supportedArabicFonts,
+    );
+    _settings = _settings.copyWith(arabicFontFamily: normalized);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('arabic_font', fontFamily);
+    await prefs.setString('arabic_font', normalized);
     notifyListeners();
   }
 
   Future<void> updateAppFont(String fontFamily) async {
-    _settings = _settings.copyWith(appFontFamily: fontFamily);
+    final normalized = normalizeFontFamily(
+      fontFamily,
+      allowedFonts: supportedAppFonts,
+    );
+    _settings = _settings.copyWith(appFontFamily: normalized);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('app_font', fontFamily);
+    await prefs.setString('app_font', normalized);
     notifyListeners();
   }
 
